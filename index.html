@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SQL Quest: Browser SQL Learning Game</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div>
+          <h1>SQL Quest</h1>
+          <p class="subtitle">Learn SQL by solving real query challenges.</p>
+        </div>
+        <div class="scoreboard" aria-live="polite">
+          <p><strong>Level:</strong> <span id="current-level-label">1</span> / 5</p>
+          <p><strong>Score:</strong> <span id="score-value">0</span></p>
+          <p><strong>Completed:</strong> <span id="completed-count">0</span> / 5</p>
+        </div>
+      </header>
+
+      <section class="level-selector" aria-label="Choose challenge level">
+        <h2>Levels</h2>
+        <div id="level-buttons" class="button-row"></div>
+      </section>
+
+      <section class="challenge-card">
+        <h2 id="challenge-title">Level 1: SELECT statements</h2>
+        <p id="challenge-description"></p>
+
+        <div class="meta-grid">
+          <article>
+            <h3>Task</h3>
+            <p id="challenge-task"></p>
+          </article>
+          <article>
+            <h3>Hint</h3>
+            <p id="challenge-hint"></p>
+          </article>
+        </div>
+
+        <label for="query-editor" class="editor-label">Write your SQL query:</label>
+        <textarea
+          id="query-editor"
+          rows="6"
+          spellcheck="false"
+          aria-describedby="editor-help"
+        ></textarea>
+        <p id="editor-help" class="helper-text">
+          Tip: Run one statement at a time. Your result set is compared to the expected answer.
+        </p>
+
+        <div class="button-row action-row">
+          <button id="run-query-btn" class="primary">Run Query</button>
+          <button id="reset-level-btn">Reset Level</button>
+        </div>
+
+        <p id="feedback" class="feedback" aria-live="polite"></p>
+      </section>
+
+      <section class="results-card">
+        <h2>Query Results</h2>
+        <div id="results-container" class="results-container">
+          <p class="placeholder">Run a query to see results.</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- sql.js (SQLite compiled to WebAssembly) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.11.0/sql-wasm.min.js"></script>
+    <script src="script.js" defer></script>
+  </body>
+</html>
