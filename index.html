@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Quest: The Data Dungeon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Press+Start+2P&display=swap');
+        
+        :root {
+            --primary: #4f46e5;
+            --secondary: #10b981;
+            --accent: #f59e0b;
+            --bg-dark: #0f172a;
+            --terminal-bg: #1e293b;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .pixel-font { font-family: 'Press Start 2P', cursive; }
+        .code-font { font-family: 'Fira Code', monospace; }
+
+        .terminal-container {
+            background: var(--terminal-bg);
+            border: 2px solid #334155;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .success-flash {
+            animation: flash 0.5s ease-out;
+        }
+
+        @keyframes flash {
+            0% { background-color: rgba(16, 185, 129, 0.2); }
+            100% { background-color: transparent; }
+        }
+
+        .tab-active {
+            border-bottom: 2px solid var(--primary);
+            color: white !important;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+
+        .bounce { animation: bounce 2s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .history-item:hover .recast-btn { opacity: 1; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="app" class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl pixel-font text-indigo-400">SQL QUEST</h1>
+                <p class="text-slate-400 mt-1">Master the language of data to escape the dungeon.</p>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                <div class="text-center px-4 border-r border-slate-700">
+                    <span class="block text-xs uppercase text-slate-500 font-bold">Level</span>
+                    <span id="level-display" class="text-xl font-bold text-indigo-400">1</span>
+                </div>
+                <div class="text-center px-4 border-r border-slate-700">
+                    <span class="block text-xs uppercase text-slate-500 font-bold">Progress</span>
+                    <span id="progress-display" class="text-xl font-bold text-emerald-400">0%</span>
+                </div>
+                <div class="text-center px-4">
+                    <span class="block text-xs uppercase text-slate-500 font-bold">Rank</span>
+                    <span id="rank-display" class="text-sm font-bold text-amber-400">Novice</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left Column: Story & Task -->
+            <div class="lg:col-span-4 space-y-6">
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-xl">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center text-2xl bounce">
+                            🧙‍♂️
+                        </div>
+                        <h2 class="text-xl font-bold text-white" id="mission-title">Mission Start</h2>
+                    </div>
+                    <div id="mission-desc" class="text-slate-300 leading-relaxed space-y-4 text-sm">
+                        <!-- Content injected by JS -->
+                    </div>
+                    
+                    <div class="mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase mb-3">Target Objective:</h3>
+                        <div id="objective-box" class="bg-slate-900/50 p-3 rounded border border-indigo-500/30 text-indigo-200 text-sm italic">
+                            <!-- Content injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
+                        <i class="fas fa-database text-indigo-400"></i> Database Schema
+                    </h3>
+                    <div id="schema-display" class="space-y-4">
+                        <!-- Content injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Editor & Results -->
+            <div class="lg:col-span-8 space-y-6">
+                <!-- Editor -->
+                <div class="terminal-container rounded-xl overflow-hidden flex flex-col">
+                    <div class="bg-slate-700 px-4 py-2 flex justify-between items-center">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono tracking-widest uppercase">Query_Engine_v2.0</span>
+                    </div>
+                    <div class="relative">
+                        <textarea id="sql-input" 
+                            class="w-full h-48 bg-slate-900 p-6 code-font text-indigo-300 focus:outline-none resize-none leading-relaxed"
+                            spellcheck="false"
+                            placeholder="-- Type your magic words here..."></textarea>
+                        <div class="absolute bottom-4 right-4 flex gap-3">
+                            <button id="reset-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded font-bold text-sm transition-colors">
+                                <i class="fas fa-undo mr-2"></i>Reset
+                            </button>
+                            <button id="run-btn" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-bold text-sm shadow-lg shadow-indigo-900/20 transition-all flex items-center gap-2">
+                                <i class="fas fa-bolt text-amber-300"></i> CAST QUERY
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results & History Tabs -->
+                <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col min-h-[350px]">
+                    <div class="border-b border-slate-700 flex bg-slate-800/50">
+                        <button id="tab-result" class="px-6 py-3 text-sm font-bold tab-active transition-all">
+                            <i class="fas fa-table mr-2"></i>Query Result
+                        </button>
+                        <button id="tab-history" class="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-300 transition-all">
+                            <i class="fas fa-history mr-2"></i>Dungeon Records
+                        </button>
+                    </div>
+
+                    <div id="result-view" class="p-6 flex-grow overflow-auto custom-scrollbar">
+                        <div id="placeholder-text" class="h-full flex flex-col items-center justify-center text-slate-500 italic space-y-2">
+                            <i class="fas fa-terminal text-4xl mb-2 opacity-20"></i>
+                            <p>Awaiting your command, Wizard.</p>
+                        </div>
+                        <div id="table-wrapper" class="hidden">
+                            <table class="w-full text-left text-sm border-collapse">
+                                <thead id="table-head" class="bg-slate-900/50 text-slate-400 uppercase text-[10px] tracking-wider">
+                                    <!-- Dynamic -->
+                                </thead>
+                                <tbody id="table-body" class="divide-y divide-slate-700">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="error-display" class="hidden p-4 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 font-mono text-sm">
+                            <!-- Error text -->
+                        </div>
+                        <div id="success-display" class="hidden p-6 text-center">
+                            <div class="inline-block bg-emerald-500/20 text-emerald-400 p-4 rounded-full mb-4 ring-4 ring-emerald-500/10">
+                                <i class="fas fa-unlock-alt text-4xl"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-white mb-2">Gate Unlocked!</h4>
+                            <p class="text-slate-400 mb-6">Your data logic has revealed the path forward.</p>
+                            <button id="next-level-btn" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-lg shadow-emerald-900/40 transition-all">
+                                DESCEND DEEPER
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- History View -->
+                    <div id="history-view" class="hidden p-0 flex-grow overflow-auto custom-scrollbar bg-slate-900/30">
+                        <div id="history-list" class="divide-y divide-slate-800">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full bg-slate-800 border border-slate-600 shadow-2xl opacity-0 transition-all pointer-events-none z-50">
+            <span id="toast-msg" class="text-white font-medium"></span>
+        </div>
+    </div>
+
+    <script>
+        const LEVELS = [
+            {
+                id: 1,
+                title: "The Entrance Hall",
+                story: "The ancient library doors are locked. You find a stone tablet containing a table named <code>items</code>. To open the door, you must view every artifact stored here.",
+                objective: "Select all columns from the <code>items</code> table.",
+                expectedQuery: "SELECT * FROM items",
+                checkType: "data_match",
+                tables: {
+                    items: [
+                        { id: 1, name: 'Rusty Key', power: 2, type: 'Quest' },
+                        { id: 2, name: 'Ancient Scroll', power: 10, type: 'Magic' },
+                        { id: 3, name: 'Iron Sword', power: 15, type: 'Weapon' },
+                        { id: 4, name: 'Health Potion', power: 50, type: 'Consumable' }
+                    ]
+                }
+            },
+            {
+                id: 2,
+                title: "The Armory Search",
+                story: "The guards are approaching! You need to find a powerful weapon. Search the <code>items</code> table, but only list the <b>names</b> and <b>power</b> levels of the artifacts.",
+                objective: "Select only the 'name' and 'power' columns from the <code>items</code> table.",
+                expectedQuery: "SELECT name, power FROM items",
+                checkType: "columns_match",
+                expectedCols: ['name', 'power'],
+                tables: {
+                    items: [
+                        { id: 1, name: 'Rusty Key', power: 2, type: 'Quest' },
+                        { id: 2, name: 'Ancient Scroll', power: 10, type: 'Magic' },
+                        { id: 3, name: 'Iron Sword', power: 15, type: 'Weapon' },
+                        { id: 4, name: 'Health Potion', power: 50, type: 'Consumable' }
+                    ]
+                }
+            },
+            {
+                id: 3,
+                title: "The Elite Arsenal",
+                story: "The door to the vault only opens for high-power items. Find all items with a power level <b>greater than 12</b>.",
+                objective: "Select all items where power is greater than 12.",
+                expectedQuery: "SELECT * FROM items WHERE power > 12",
+                checkType: "data_match",
+                tables: {
+                    items: [
+                        { id: 1, name: 'Rusty Key', power: 2, type: 'Quest' },
+                        { id: 2, name: 'Ancient Scroll', power: 10, type: 'Magic' },
+                        { id: 3, name: 'Iron Sword', power: 15, type: 'Weapon' },
+                        { id: 4, name: 'Health Potion', power: 50, type: 'Consumable' }
+                    ]
+                }
+            },
+            {
+                id: 4,
+                title: "The Ghostly Presence",
+                story: "There are hidden types of spirits here. You suspect some items are 'Ethereal'. Find only the unique types of items available in the dungeon.",
+                objective: "Select the <b>distinct</b> 'type' from the <code>items</code> table.",
+                expectedQuery: "SELECT DISTINCT type FROM items",
+                checkType: "data_match",
+                tables: {
+                    items: [
+                        { id: 1, name: 'Soul Gem', type: 'Ethereal' },
+                        { id: 2, name: 'Spirit Bell', type: 'Ethereal' },
+                        { id: 3, name: 'Steel Shield', type: 'Physical' },
+                        { id: 4, name: 'Bread', type: 'Physical' }
+                    ]
+                }
+            },
+            {
+                id: 5,
+                title: "The Guard's Registry",
+                story: "To pass the bridge, you must match the <code>guards</code> with their assigned <code>posts</code>. Use a JOIN to reveal which guard is at which post.",
+                objective: "Select <code>guards.name</code> and <code>posts.location</code> by joining the tables on <code>guard_id</code>.",
+                expectedQuery: "SELECT guards.name, posts.location FROM guards JOIN posts ON guards.id = posts.guard_id",
+                checkType: "data_match",
+                tables: {
+                    guards: [
+                        { id: 1, name: 'Alaric' },
+                        { id: 2, name: 'Beatrice' }
+                    ],
+                    posts: [
+                        { id: 10, location: 'North Gate', guard_id: 1 },
+                        { id: 20, location: 'Dungeon Bridge', guard_id: 2 }
+                    ]
+                }
+            }
+        ];
+
+        class GameState {
+            constructor() {
+                this.currentLevelIdx = 0;
+                this.history = [];
+                this.db = {};
+                this.ranks = ["Novice", "Data Scribe", "Analyst", "Data Knight", "Arch-Mage"];
+            }
+
+            init() {
+                this.loadLevel(0);
+                this.setupEventListeners();
+                this.updateProgress();
+            }
+
+            loadLevel(idx) {
+                this.currentLevelIdx = idx;
+                const level = LEVELS[idx];
+                this.db = JSON.parse(JSON.stringify(level.tables)); 
+                
+                document.getElementById('mission-title').innerText = level.title;
+                document.getElementById('mission-desc').innerHTML = `<p>${level.story}</p>`;
+                document.getElementById('objective-box').innerHTML = `<strong>Goal:</strong> ${level.objective}`;
+                document.getElementById('sql-input').value = "";
+                
+                this.renderSchema();
+                this.switchTab('result');
+                this.clearDisplay();
+                this.updateProgress();
+            }
+
+            renderSchema() {
+                const schemaDiv = document.getElementById('schema-display');
+                schemaDiv.innerHTML = "";
+                
+                for (const [tableName, data] of Object.entries(this.db)) {
+                    if (data.length === 0) continue;
+                    const columns = Object.keys(data[0]);
+                    const tableHtml = `
+                        <div class="bg-slate-900/50 rounded p-3 border border-slate-700">
+                            <div class="text-xs font-bold text-indigo-400 mb-2 flex justify-between">
+                                <span>${tableName.toUpperCase()}</span>
+                                <span class="text-slate-600">${data.length} rows</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                ${columns.map(col => `
+                                    <span class="text-xs text-slate-300 code-font">${col}</span>
+                                    <span class="text-[10px] text-slate-600 text-right uppercase italic">field</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    schemaDiv.innerHTML += tableHtml;
+                }
+            }
+
+            updateProgress() {
+                const progress = Math.round(((this.currentLevelIdx) / LEVELS.length) * 100);
+                document.getElementById('level-display').innerText = this.currentLevelIdx + 1;
+                document.getElementById('progress-display').innerText = `${progress}%`;
+                
+                const rankIdx = Math.min(Math.floor(this.currentLevelIdx / 1), this.ranks.length - 1);
+                document.getElementById('rank-display').innerText = this.ranks[rankIdx];
+            }
+
+            clearDisplay() {
+                document.getElementById('placeholder-text').classList.remove('hidden');
+                document.getElementById('table-wrapper').classList.add('hidden');
+                document.getElementById('error-display').classList.add('hidden');
+                document.getElementById('success-display').classList.add('hidden');
+            }
+
+            setupEventListeners() {
+                document.getElementById('run-btn').addEventListener('click', () => this.handleRun());
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    document.getElementById('sql-input').value = "";
+                    this.showToast("Dungeon scroll cleared.");
+                });
+                document.getElementById('next-level-btn').addEventListener('click', () => {
+                    if (this.currentLevelIdx < LEVELS.length - 1) {
+                        this.loadLevel(this.currentLevelIdx + 1);
+                    } else {
+                        this.showToast("All chambers conquered! You are a Data Arch-Mage.");
+                    }
+                });
+
+                document.getElementById('tab-result').addEventListener('click', () => this.switchTab('result'));
+                document.getElementById('tab-history').addEventListener('click', () => this.switchTab('history'));
+            }
+
+            switchTab(tab) {
+                const resTab = document.getElementById('tab-result');
+                const histTab = document.getElementById('tab-history');
+                const resView = document.getElementById('result-view');
+                const histView = document.getElementById('history-view');
+
+                if (tab === 'result') {
+                    resTab.classList.add('tab-active');
+                    histTab.classList.remove('tab-active');
+                    resView.classList.remove('hidden');
+                    histView.classList.add('hidden');
+                } else {
+                    histTab.classList.add('tab-active');
+                    resTab.classList.remove('tab-active');
+                    histView.classList.remove('hidden');
+                    resView.classList.add('hidden');
+                    this.renderHistory();
+                }
+            }
+
+            addToHistory(query, status) {
+                this.history.unshift({
+                    id: Date.now(),
+                    query,
+                    status,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+            }
+
+            renderHistory() {
+                const list = document.getElementById('history-list');
+                if (this.history.length === 0) {
+                    list.innerHTML = `
+                        <div class="p-12 text-center text-slate-500 italic">
+                            <i class="fas fa-scroll text-3xl mb-3 opacity-20"></i>
+                            <p>No query records found in this chamber yet.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = this.history.map(item => `
+                    <div class="history-item group p-4 flex items-start justify-between hover:bg-slate-800/50 transition-all border-l-4 ${item.status === 'success' ? 'border-emerald-500' : 'border-red-500'}">
+                        <div class="flex-grow">
+                            <div class="flex items-center gap-3 mb-1">
+                                <span class="text-[10px] text-slate-500 font-mono">${item.time}</span>
+                                <span class="text-[9px] uppercase font-bold ${item.status === 'success' ? 'text-emerald-500' : 'text-red-500'} tracking-tighter">${item.status}</span>
+                            </div>
+                            <code class="text-sm text-indigo-300 font-mono block whitespace-pre-wrap">${item.query}</code>
+                        </div>
+                        <button onclick="game.recast('${item.id}')" class="recast-btn opacity-0 px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded text-xs transition-all flex items-center gap-1">
+                            <i class="fas fa-magic"></i> Recast
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            recast(id) {
+                const item = this.history.find(i => i.id == id);
+                if (item) {
+                    document.getElementById('sql-input').value = item.query;
+                    this.switchTab('result');
+                    this.showToast("Query restored to scroll.");
+                }
+            }
+
+            handleRun() {
+                const query = document.getElementById('sql-input').value.trim();
+                if (!query) {
+                    this.showError("The wizard casts silence... Type something first!");
+                    return;
+                }
+
+                this.switchTab('result');
+
+                try {
+                    const result = this.simulateSQL(query);
+                    this.addToHistory(query, 'success');
+                    this.renderResults(result);
+                    this.checkVictory(query, result);
+                } catch (err) {
+                    this.addToHistory(query, 'error');
+                    this.showError(err.message);
+                }
+            }
+
+            simulateSQL(query) {
+                const q = query.toLowerCase().replace(/;/g, '').trim();
+                
+                // Advanced Simulation (Supports JOINs and DISTINCT)
+                // Pattern for JOIN: SELECT ... FROM table1 JOIN table2 ON ...
+                const joinMatch = q.match(/select\s+(.+?)\s+from\s+(\w+)\s+join\s+(\w+)\s+on\s+(.+?)(?:\s+where\s+(.+?))?(?:\s+order\s+by\s+(.+))?$/);
+                
+                if (joinMatch) {
+                    return this.handleJoin(joinMatch);
+                }
+
+                // Standard pattern
+                const selectMatch = q.match(/select\s+(distinct\s+)?(.+?)\s+from\s+(\w+)(?:\s+where\s+(.+?))?(?:\s+order\s+by\s+(.+?))?(?:\s+limit\s+(\d+))?$/);
+                
+                if (!selectMatch) {
+                    throw new Error("Syntax Error: Use 'SELECT columns FROM table'.");
+                }
+
+                const [, isDistinct, colsPart, tableName, wherePart, orderPart, limitPart] = selectMatch;
+                
+                if (!this.db[tableName]) {
+                    throw new Error(`Dungeon Error: The table '${tableName}' was not found.`);
+                }
+
+                let data = JSON.parse(JSON.stringify(this.db[tableName]));
+
+                // WHERE
+                if (wherePart) data = this.applyFilter(data, wherePart);
+
+                // ORDER BY
+                if (orderPart) data = this.applySort(data, orderPart);
+
+                // SELECT COLUMNS & DISTINCT
+                const colsToKeep = colsPart.trim() === '*' ? Object.keys(data[0]) : colsPart.split(',').map(c => c.trim().split('.').pop());
+                
+                let finalData = data.map(row => {
+                    const newRow = {};
+                    colsToKeep.forEach(c => {
+                        if (!(c in row)) throw new Error(`Column Error: '${c}' is unknown.`);
+                        newRow[c] = row[c];
+                    });
+                    return newRow;
+                });
+
+                if (isDistinct) {
+                    const seen = new Set();
+                    finalData = finalData.filter(item => {
+                        const k = JSON.stringify(item);
+                        return seen.has(k) ? false : seen.add(k);
+                    });
+                }
+
+                if (limitPart) finalData = finalData.slice(0, parseInt(limitPart));
+
+                return finalData;
+            }
+
+            handleJoin(match) {
+                const [, colsPart, t1Name, t2Name, onPart] = match;
+                const t1 = this.db[t1Name];
+                const t2 = this.db[t2Name];
+
+                if (!t1 || !t2) throw new Error("Join Error: One of the tables does not exist.");
+
+                // Simple ON parser: guards.id = posts.guard_id
+                const onMatch = onPart.match(/(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)/);
+                if (!onMatch) throw new Error("Join Error: Syntax 'ON table1.col = table2.col' required.");
+
+                const [, leftT, leftC, rightT, rightC] = onMatch;
+                
+                const joined = [];
+                t1.forEach(r1 => {
+                    t2.forEach(r2 => {
+                        const val1 = r1[leftC] || r1[rightC]; 
+                        const val2 = r2[leftC] || r2[rightC];
+                        if (val1 === val2 && val1 !== undefined) {
+                            joined.push({...r1, ...r2});
+                        }
+                    });
+                });
+
+                // Pick columns
+                const cols = colsPart.split(',').map(c => c.trim().split('.').pop());
+                return joined.map(row => {
+                    const res = {};
+                    cols.forEach(c => res[c] = row[c]);
+                    return res;
+                });
+            }
+
+            applyFilter(data, where) {
+                const m = where.match(/(\w+)\s*(=|>|<|>=|<=)\s*(.+)/);
+                if (!m) return data;
+                const [,, op, valRaw] = m;
+                const col = m[1].trim();
+                let val = valRaw.trim().replace(/'/g, '');
+                return data.filter(row => {
+                    const rv = row[col];
+                    const cv = isNaN(val) ? val : Number(val);
+                    switch(op) {
+                        case '=': return String(rv).toLowerCase() === String(cv).toLowerCase();
+                        case '>': return rv > cv;
+                        case '<': return rv < cv;
+                        default: return false;
+                    }
+                });
+            }
+
+            applySort(data, order) {
+                const parts = order.trim().split(/\s+/);
+                const col = parts[0];
+                const isDesc = parts[1] === 'desc';
+                return data.sort((a, b) => {
+                    if (a[col] < b[col]) return isDesc ? 1 : -1;
+                    if (a[col] > b[col]) return isDesc ? -1 : 1;
+                    return 0;
+                });
+            }
+
+            renderResults(data) {
+                this.clearDisplay();
+                document.getElementById('placeholder-text').classList.add('hidden');
+                
+                if (data.length === 0) {
+                    this.showError("Empty Result: No data matches your query criteria.");
+                    return;
+                }
+
+                document.getElementById('table-wrapper').classList.remove('hidden');
+                const head = document.getElementById('table-head');
+                const body = document.getElementById('table-body');
+                
+                const columns = Object.keys(data[0]);
+                head.innerHTML = `<tr>${columns.map(c => `<th class="p-3 border-b border-slate-700">${c}</th>`).join('')}</tr>`;
+                body.innerHTML = data.map(row => `
+                    <tr class="hover:bg-indigo-500/5 transition-colors">
+                        ${columns.map(c => `<td class="p-3 text-slate-300 font-mono text-xs">${row[c]}</td>`).join('')}
+                    </tr>
+                `).join('');
+                
+                document.getElementById('result-container')?.classList.add('success-flash');
+            }
+
+            showError(msg) {
+                this.clearDisplay();
+                document.getElementById('placeholder-text').classList.add('hidden');
+                const err = document.getElementById('error-display');
+                err.classList.remove('hidden');
+                err.innerHTML = `<div class="flex gap-3"><i class="fas fa-skull-crossbones text-xl mt-1"></i> <div><strong class="block mb-1">Casting Failed</strong>${msg}</div></div>`;
+            }
+
+            checkVictory(query, result) {
+                const level = LEVELS[this.currentLevelIdx];
+                let isWin = false;
+
+                const normQ = query.toLowerCase().replace(/\s+/g, ' ').replace(/;/g, '').trim();
+                const normE = level.expectedQuery.toLowerCase().replace(/\s+/g, ' ').trim();
+
+                if (normQ === normE) {
+                    isWin = true;
+                } else if (level.checkType === "data_match") {
+                    try {
+                        const targetResult = this.simulateSQL(level.expectedQuery);
+                        if (JSON.stringify(result) === JSON.stringify(targetResult)) isWin = true;
+                    } catch(e) {}
+                } else if (level.checkType === "columns_match") {
+                    const resultCols = Object.keys(result[0] || {}).sort();
+                    const expectedCols = level.expectedCols.sort();
+                    if (JSON.stringify(resultCols) === JSON.stringify(expectedCols)) isWin = true;
+                }
+
+                if (isWin) {
+                    setTimeout(() => {
+                        document.getElementById('table-wrapper').classList.add('hidden');
+                        document.getElementById('success-display').classList.remove('hidden');
+                        this.showToast("Challenge solved!");
+                    }, 500);
+                }
+            }
+
+            showToast(msg) {
+                const toast = document.getElementById('toast');
+                document.getElementById('toast-msg').innerText = msg;
+                toast.classList.replace('opacity-0', 'opacity-100');
+                setTimeout(() => toast.classList.replace('opacity-100', 'opacity-0'), 3000);
+            }
+        }
+
+        const game = new GameState();
+        window.onload = () => game.init();
+    </script>
+</body>
+</html>
